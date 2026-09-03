@@ -1,0 +1,17 @@
+.git
+.gitignore
+node_modules
+backend/node_modules
+frontend/node_modules
+backend/dist
+frontend/.next
+java-pivot-export-service/target
+backend/storage
+backend/.env
+frontend/.env
+java-pivot-export-service/.env
+backend-dev.err.log
+backend-dev.out.log
+frontend-dev.err.log
+frontend-dev.out.log
+tmp-*

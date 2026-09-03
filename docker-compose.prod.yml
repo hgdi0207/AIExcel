@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: aiexcel-backend
+    restart: unless-stopped
+    env_file:
+      - backend/.env
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      FRONTEND_ORIGIN: http://YOUR_SERVER_IP:3101
+      CORS_ORIGINS: http://YOUR_SERVER_IP:3101
+      PIVOT_EXPORT_SERVICE_URL: http://pivot-export:8085
+    ports:
+      - "3100:3000"
+    volumes:
+      - ./backend/storage:/app/backend/storage
+    depends_on:
+      - pivot-export
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        BACKEND_ORIGIN: http://backend:3000
+    container_name: aiexcel-frontend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      BACKEND_ORIGIN: http://backend:3000
+    ports:
+      - "3101:3001"
+    depends_on:
+      - backend
+
+  pivot-export:
+    build:
+      context: ./java-pivot-export-service
+      dockerfile: Dockerfile
+    container_name: aiexcel-pivot-export
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: 8085
+      PIVOT_EXPORT_SHARED_TOKEN: change-me
+      JAVA_TOOL_OPTIONS: -Xms256m -Xmx1024m
+    expose:
+      - "8085"

@@ -1,0 +1,12 @@
+server:
+  port: ${PORT:8085}
+
+spring:
+  application:
+    name: java-pivot-export-service
+
+pivot:
+  export:
+    shared-token: ${PIVOT_EXPORT_SHARED_TOKEN:change-me}
+    output-root: ${PIVOT_EXPORT_STORAGE_ROOT:../backend/storage/exports/pivot}
+    allowed-source-roots-csv: ${PIVOT_EXPORT_ALLOWED_SOURCE_ROOTS:../backend/storage/uploads,../backend/storage/local/uploads}

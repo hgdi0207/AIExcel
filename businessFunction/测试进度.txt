@@ -1,0 +1,32 @@
+@1.### TC-016 Pivot 任务创建成功，因设计变更，开发完成后测试；
+@2.### TC-018 Data Analysis 任务创建成功，返回结果
+{
+  "summaryMd": "## Revenue trend and anomaly review\n\nJanuary actual revenue is **$420,000**, versus a target of **$430,000**, resulting in a **$10,000 shortfall (2.3%)**. North is the largest January region at **$125,000**, while West is lowest at **$87,000**. The available detail shows North improving to **$132,000 in February** (+5.6% month over month), but full February and March totals should be calculated before concluding that company-wide revenue is accelerating.\n\nThe key reporting anomaly is structural: **区域汇总 is entirely blank**, including the Total row and profit-margin fields. Populate this sheet from 销售明细 and add actual-versus-target comparisons against 月度目标 so revenue shortfalls and regional underperformance are flagged automatically.",
+  "insights": [
+    {
+      "type": "trend",
+      "title": "January revenue is below target",
+      "description": "January revenue totals $420,000 across the four regions ($125,000 North, $98,000 South, $110,000 East, and $87,000 West), which is $10,000 (2.3%) below the $430,000 monthly target. North leads January revenue, while West is the smallest contributor."
+    },
+    {
+      "type": "trend",
+      "title": "Early February growth is visible in North",
+      "description": "North revenue rose from $125,000 in January to $132,000 in February, a $7,000 (5.6%) month-over-month increase. This is positive momentum, but the complete February and March detail should be totaled to confirm whether the overall business is tracking toward the higher monthly targets of $450,000 and $480,000."
+    },
+    {
+      "type": "quality",
+      "title": "Regional summary calculations are missing",
+      "description": "The regional summary sheet contains blank values for Total Revenue, Total Cost, Total Profit, and Profit Margin for every region and for the Total row. This prevents validation of regional performance and can cause reporting errors if this sheet is used as a dashboard."
+    },
+    {
+      "type": "quality",
+      "title": "Validate numeric formatting in source data",
+      "description": "Revenue, cost, and profit values are presented with comma separators (for example, \"125,000\"). Ensure these cells are stored as numeric values rather than text; text-formatted amounts can cause SUM, margin, and variance formulas to return incorrect or blank results."
+    },
+    {
+      "type": "recommendation",
+      "title": "Automate target tracking and anomaly flags",
+      "description": "Add monthly actual-versus-target calculations: sum revenue by Month from 销售明细, compare it with 月度目标, and flag variances below target. Also populate 区域汇总 with SUMIFS-based totals and Profit Margin = Total Profit / Total Revenue to make regional anomalies visible."
+    }
+  ]
+}

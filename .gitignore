@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.*
+backend/.env
+backend/.env.*
+frontend/.env
+frontend/.env.*
+java-pivot-export-service/.env
+java-pivot-export-service/.env.*
+!*.env.example
+!backend/.env.example
+!frontend/.env.example
+!java-pivot-export-service/.env.example
+
+# Build output
+backend/dist/
+frontend/.next/
+frontend/out/
+java-pivot-export-service/target/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Local storage and exports
+backend/storage/
+
+# Temp files
+tmp-*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

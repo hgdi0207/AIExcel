@@ -1,0 +1,451 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserPlan {
+  free
+  pro
+  pro_plus
+  team
+  admin
+}
+
+enum UserStatus {
+  active
+  suspended
+  deleted
+}
+
+enum OAuthProvider {
+  google
+  microsoft
+}
+
+enum SubscriptionStatus {
+  trialing
+  active
+  past_due
+  canceled
+  incomplete
+  unpaid
+}
+
+enum WorkbookStatus {
+  uploaded
+  parsing
+  ready
+  failed
+  archived
+}
+
+enum JobStatus {
+  queued
+  running
+  completed
+  failed
+  canceled
+}
+
+enum AssistantRole {
+  user
+  assistant
+  system
+}
+
+enum ToolType {
+  assistant
+  pivot_builder
+  data_analysis
+  charts
+  reports
+  file_upload
+}
+
+enum UsageMetricType {
+  spreadsheet_assistant
+  pivot_builder
+  data_analysis
+  charts
+  reports
+  file_upload
+  credit_total
+  sol_usage
+}
+
+enum PeriodType {
+  month
+  rolling_12h
+}
+
+enum ActionType {
+  consume
+  refund
+}
+
+enum ReportFormat {
+  md
+  docx
+  pdf
+}
+
+model User {
+  id            String            @id @default(uuid()) @db.Uuid
+  email         String            @unique @db.VarChar(255)
+  name          String?           @db.VarChar(120)
+  avatarUrl     String?           @map("avatar_url")
+  plan          UserPlan          @default(free)
+  locale        String?           @default("en") @db.VarChar(16)
+  timezone      String?           @default("Asia/Shanghai") @db.VarChar(64)
+  status        UserStatus        @default(active)
+  lastLoginAt   DateTime?         @map("last_login_at") @db.Timestamptz(6)
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  oauthAccounts OAuthAccount[]
+  subscriptions  Subscription[]
+  workbooks      Workbook[]
+  assistantThreads AssistantThread[]
+  pivotJobs      PivotJob[]
+  analysisJobs   AnalysisJob[]
+  chartJobs      ChartJob[]
+  reportJobs     ReportJob[]
+  aiRequests     AiRequest[]
+  usageCounters  UsageCounter[]
+  usageEvents    UsageEvent[]
+
+  @@map("users")
+  @@index([plan])
+  @@index([createdAt(sort: Desc)])
+}
+
+model OAuthAccount {
+  id                    String       @id @default(uuid()) @db.Uuid
+  userId                String       @map("user_id") @db.Uuid
+  provider              OAuthProvider
+  providerAccountId     String       @map("provider_account_id") @db.VarChar(255)
+  providerEmail         String?      @map("provider_email") @db.VarChar(255)
+  accessTokenEncrypted  String?      @map("access_token_encrypted")
+  refreshTokenEncrypted String?      @map("refresh_token_encrypted")
+  tokenExpiresAt        DateTime?    @map("token_expires_at") @db.Timestamptz(6)
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("oauth_accounts")
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Subscription {
+  id                     String              @id @default(uuid()) @db.Uuid
+  userId                 String              @map("user_id") @db.Uuid
+  provider               String              @default("stripe") @db.VarChar(32)
+  providerCustomerId     String?             @map("provider_customer_id") @db.VarChar(255)
+  providerSubscriptionId String?             @map("provider_subscription_id") @db.VarChar(255)
+  planCode               String              @map("plan_code") @db.VarChar(64)
+  status                 SubscriptionStatus
+  currency               String              @default("usd") @db.VarChar(8)
+  amountCents            Int                 @map("amount_cents")
+  interval               String              @db.VarChar(16)
+  currentPeriodStart     DateTime?           @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd       DateTime?           @map("current_period_end") @db.Timestamptz(6)
+  cancelAtPeriodEnd      Boolean             @default(false) @map("cancel_at_period_end")
+  createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+  @@index([userId])
+  @@index([status])
+  @@index([providerSubscriptionId])
+}
+
+model BillingWebhookEvent {
+  id                     String   @id @default(uuid()) @db.Uuid
+  provider               String   @default("stripe") @db.VarChar(32)
+  providerEventId        String   @map("provider_event_id") @db.VarChar(255)
+  providerSubscriptionId String?  @map("provider_subscription_id") @db.VarChar(255)
+  eventType              String   @map("event_type") @db.VarChar(128)
+  payloadJson            Json?    @map("payload_json")
+  status                 String   @default("processed") @db.VarChar(32)
+  processedAt            DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("billing_webhook_events")
+  @@unique([provider, providerEventId])
+  @@index([providerSubscriptionId])
+  @@index([eventType])
+}
+
+model Workbook {
+  id               String         @id @default(uuid()) @db.Uuid
+  userId           String         @map("user_id") @db.Uuid
+  originalFileName String         @map("original_file_name") @db.VarChar(255)
+  fileType         String         @map("file_type") @db.VarChar(16)
+  mimeType         String         @map("mime_type") @db.VarChar(128)
+  objectKey        String         @map("object_key")
+  fileSizeBytes    BigInt         @map("file_size_bytes")
+  status           WorkbookStatus @default(uploaded)
+  sheetCount       Int?           @map("sheet_count")
+  rowCount         Int?           @map("row_count")
+  columnCount      Int?           @map("column_count")
+  summaryMd        String?        @map("summary_md")
+  summaryJson      Json?          @map("summary_json")
+  parseError       String?        @map("parse_error")
+  uploadedAt       DateTime       @default(now()) @map("uploaded_at") @db.Timestamptz(6)
+  parsedAt         DateTime?      @map("parsed_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sheets           WorkbookSheet[]
+  assistantThreads AssistantThread[]
+  pivotJobs        PivotJob[]
+  analysisJobs     AnalysisJob[]
+  chartJobs        ChartJob[]
+  reportJobs       ReportJob[]
+
+  @@map("workbooks")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+}
+
+model WorkbookSheet {
+  id              String   @id @default(uuid()) @db.Uuid
+  workbookId      String   @map("workbook_id") @db.Uuid
+  sheetName       String   @map("sheet_name") @db.VarChar(255)
+  sheetIndex      Int      @map("sheet_index")
+  headerJson      Json?    @map("header_json")
+  columnTypesJson Json?    @map("column_types_json")
+  formulaColumnsJson Json? @map("formula_columns_json")
+  sampleRowsJson  Json?    @map("sample_rows_json")
+  tableRegionsJson Json?   @map("table_regions_json")
+  fieldProfilesJson Json?  @map("field_profiles_json")
+  qualityProfileJson Json? @map("quality_profile_json")
+  summaryMd       String?  @map("summary_md")
+  rowCount        Int?     @map("row_count")
+  columnCount     Int?     @map("column_count")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  workbook Workbook @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+
+  @@map("workbook_sheets")
+  @@unique([workbookId, sheetIndex])
+  @@index([workbookId])
+  @@index([workbookId, sheetName])
+}
+
+model AssistantThread {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  workbookId  String?  @map("workbook_id") @db.Uuid
+  title       String?  @db.VarChar(255)
+  status      String   @default("active") @db.VarChar(32)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workbook    Workbook?      @relation(fields: [workbookId], references: [id])
+  messages    AssistantMessage[]
+
+  @@map("assistant_threads")
+  @@index([userId, updatedAt(sort: Desc)])
+  @@index([workbookId])
+}
+
+model AssistantMessage {
+  id            String        @id @default(uuid()) @db.Uuid
+  threadId      String        @map("thread_id") @db.Uuid
+  role          AssistantRole
+  content       String
+  contentJson   Json?         @map("content_json")
+  metadataJson  Json?         @map("metadata_json")
+  aiRequestId   String?       @map("ai_request_id") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  thread        AssistantThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("assistant_messages")
+  @@index([threadId, createdAt])
+}
+
+model PivotJob {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  workbookId          String    @map("workbook_id") @db.Uuid
+  sheetName           String    @map("sheet_name") @db.VarChar(255)
+  prompt              String
+  configJson          Json?     @map("config_json")
+  resultJson          Json?     @map("result_json")
+  exportFileName      String?   @map("export_file_name") @db.VarChar(255)
+  exportFileUrl       String?   @map("export_file_url")
+  exportFileSizeBytes BigInt?   @map("export_file_size_bytes")
+  exportSheetName     String?   @map("export_sheet_name") @db.VarChar(255)
+  exportStatus        String?   @default("pending") @map("export_status") @db.VarChar(32)
+  exportErrorMessage  String?   @map("export_error_message")
+  exportStartedAt     DateTime? @map("export_started_at") @db.Timestamptz(6)
+  exportCompletedAt   DateTime? @map("export_completed_at") @db.Timestamptz(6)
+  status              JobStatus @default(queued)
+  aiRequestId         String?   @map("ai_request_id") @db.Uuid
+  errorMessage        String?   @map("error_message")
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt         DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workbook            Workbook  @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+
+  @@map("pivot_jobs")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([workbookId])
+  @@index([status])
+  @@index([exportStatus])
+}
+
+model AnalysisJob {
+  id           String     @id @default(uuid()) @db.Uuid
+  userId       String     @map("user_id") @db.Uuid
+  workbookId   String     @map("workbook_id") @db.Uuid
+  scopeJson    Json?      @map("scope_json")
+  prompt       String
+  summaryMd    String?    @map("summary_md")
+  insightsJson Json?      @map("insights_json")
+  factsJson    Json?      @map("facts_json")
+  datasetRefJson Json?    @map("dataset_ref_json")
+  qualityWarningsJson Json? @map("quality_warnings_json")
+  followupSuggestionsJson Json? @map("followup_suggestions_json")
+  confidenceScore Decimal? @map("confidence_score") @db.Decimal(5, 4)
+  status       JobStatus  @default(queued)
+  complexity   String?    @db.VarChar(16)
+  aiRequestId  String?    @map("ai_request_id") @db.Uuid
+  errorMessage String?    @map("error_message")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt  DateTime?  @map("completed_at") @db.Timestamptz(6)
+
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workbook     Workbook   @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+  chartJobs    ChartJob[]
+  reportJobs   ReportJob[]
+
+  @@map("analysis_jobs")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+}
+
+model ChartJob {
+  id            String     @id @default(uuid()) @db.Uuid
+  userId        String     @map("user_id") @db.Uuid
+  workbookId    String     @map("workbook_id") @db.Uuid
+  analysisJobId String?    @map("analysis_job_id") @db.Uuid
+  prompt        String
+  chartType     String?    @map("chart_type") @db.VarChar(64)
+  configJson    Json?      @map("config_json")
+  previewJson   Json?      @map("preview_json")
+  status        JobStatus  @default(queued)
+  aiRequestId   String?    @map("ai_request_id") @db.Uuid
+  errorMessage  String?    @map("error_message")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt   DateTime?  @map("completed_at") @db.Timestamptz(6)
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workbook      Workbook     @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+  analysisJob   AnalysisJob? @relation(fields: [analysisJobId], references: [id])
+
+  @@map("chart_jobs")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+}
+
+model ReportJob {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  workbookId    String       @map("workbook_id") @db.Uuid
+  analysisJobId String?      @map("analysis_job_id") @db.Uuid
+  prompt        String
+  format        ReportFormat @default(md)
+  contentMd     String?      @map("content_md")
+  exportFileUrl String?      @map("export_file_url")
+  status        JobStatus    @default(queued)
+  complexity    String?      @db.VarChar(16)
+  aiRequestId   String?      @map("ai_request_id") @db.Uuid
+  errorMessage  String?      @map("error_message")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt   DateTime?    @map("completed_at") @db.Timestamptz(6)
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workbook      Workbook     @relation(fields: [workbookId], references: [id], onDelete: Cascade)
+  analysisJob   AnalysisJob? @relation(fields: [analysisJobId], references: [id])
+
+  @@map("report_jobs")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+}
+
+model AiRequest {
+  id            String      @id @default(uuid()) @db.Uuid
+  userId        String      @map("user_id") @db.Uuid
+  toolType      ToolType     @map("tool_type")
+  modelProvider String      @map("model_provider") @db.VarChar(32)
+  modelName     String      @map("model_name") @db.VarChar(64)
+  promptVersion String?     @map("prompt_version") @db.VarChar(32)
+  inputRefJson  Json?       @map("input_ref_json")
+  outputRefJson Json?       @map("output_ref_json")
+  inputTokens   Int?        @map("input_tokens")
+  outputTokens  Int?        @map("output_tokens")
+  latencyMs     Int?        @map("latency_ms")
+  costUsd       Decimal?    @map("cost_usd") @db.Decimal(12, 6)
+  status        String      @db.VarChar(32)
+  errorCode     String?     @map("error_code") @db.VarChar(64)
+  errorMessage  String?     @map("error_message")
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("ai_requests")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([toolType])
+  @@index([modelName])
+}
+
+model UsageCounter {
+  id          String           @id @default(uuid()) @db.Uuid
+  userId      String           @map("user_id") @db.Uuid
+  metricType  UsageMetricType  @map("metric_type")
+  periodType  PeriodType       @map("period_type")
+  periodStart DateTime         @map("period_start") @db.Timestamptz(6)
+  periodEnd   DateTime         @map("period_end") @db.Timestamptz(6)
+  usedCount   Int              @default(0) @map("used_count")
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("usage_counters")
+  @@unique([userId, metricType, periodType, periodStart])
+  @@index([userId])
+  @@index([periodEnd])
+}
+
+model UsageEvent {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @map("user_id") @db.Uuid
+  toolType      ToolType     @map("tool_type")
+  actionType    ActionType   @map("action_type")
+  requestId     String?      @map("request_id") @db.Uuid
+  sourceJobId   String?      @map("source_job_id") @db.Uuid
+  sourceJobType String?      @map("source_job_type") @db.VarChar(32)
+  creditDelta   Int          @map("credit_delta")
+  metadataJson  Json?        @map("metadata_json")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("usage_events")
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([requestId])
+}

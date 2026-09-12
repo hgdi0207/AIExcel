@@ -1,18 +1,25 @@
 FROM node:22-alpine AS builder
 
+ARG NPM_REGISTRY=https://registry.npmjs.org
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 
-RUN npm ci
+RUN npm config set registry "${NPM_REGISTRY}" \
+    && npm config set fetch-retries 5 \
+    && npm config set fetch-retry-mintimeout 20000 \
+    && npm config set fetch-retry-maxtimeout 120000 \
+    && HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= http_proxy= https_proxy= all_proxy= npm ci
 
 COPY backend backend
 COPY prisma prisma
 
 RUN npm run prisma:generate --workspace backend
 RUN npm run build --workspace backend
+RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runner
 
@@ -23,14 +30,11 @@ COPY package.json package-lock.json ./
 COPY backend/package.json backend/package.json
 COPY frontend/package.json frontend/package.json
 
-RUN npm ci --omit=dev
-
 COPY --from=builder /app/backend/dist backend/dist
 COPY --from=builder /app/backend/scripts backend/scripts
 COPY --from=builder /app/backend/nest-cli.json backend/nest-cli.json
 COPY --from=builder /app/prisma prisma
-COPY --from=builder /app/node_modules/.prisma node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma node_modules/@prisma
+COPY --from=builder /app/node_modules node_modules
 
 RUN mkdir -p backend/storage
 

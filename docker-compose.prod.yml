@@ -1,4 +1,4 @@
-version: "3.9"
+version: '3.9'
 
 services:
   backend:
@@ -12,11 +12,11 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
-      FRONTEND_ORIGIN: http://YOUR_SERVER_IP:3101
-      CORS_ORIGINS: http://YOUR_SERVER_IP:3101
+      FRONTEND_ORIGIN: http://YOUR_SERVER_IP:3211
+      CORS_ORIGINS: http://YOUR_SERVER_IP:3211
       PIVOT_EXPORT_SERVICE_URL: http://pivot-export:8085
     ports:
-      - "3100:3000"
+      - '3210:3000'
     volumes:
       - ./backend/storage:/app/backend/storage
     depends_on:
@@ -34,7 +34,7 @@ services:
       NODE_ENV: production
       BACKEND_ORIGIN: http://backend:3000
     ports:
-      - "3101:3001"
+      - '3211:3001'
     depends_on:
       - backend
 
@@ -49,4 +49,4 @@ services:
       PIVOT_EXPORT_SHARED_TOKEN: change-me
       JAVA_TOOL_OPTIONS: -Xms256m -Xmx1024m
     expose:
-      - "8085"
+      - '8085'

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { UsageEventRecord, UsageToolType } from './usage.types';
 
@@ -41,7 +42,7 @@ export class UsageService {
         sourceJobId: this.readString(metadata, 'jobId'),
         sourceJobType: this.readString(metadata, 'jobType') ?? toolType,
         creditDelta,
-        metadataJson: metadata ?? undefined,
+        metadataJson: metadata as Prisma.InputJsonValue | undefined,
       },
     });
 

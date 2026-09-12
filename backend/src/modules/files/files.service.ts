@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import type { Prisma } from '@prisma/client';
 import * as XLSX from 'xlsx';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WorkbookAnalysisService } from '../workbook-analysis/workbook-analysis.service';
@@ -54,7 +55,7 @@ export class FilesService {
         rowCount: parsed.workbook.rowCount,
         columnCount: parsed.workbook.columnCount,
         summaryMd: parsed.workbook.summaryMd,
-        summaryJson: parsed.workbook.summaryJson,
+        summaryJson: parsed.workbook.summaryJson as Prisma.InputJsonValue,
         parsedAt: new Date(),
         sheets: {
           create: parsed.sheets.map((sheet) => ({

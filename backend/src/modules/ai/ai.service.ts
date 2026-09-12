@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { ToolType } from '@prisma/client';
+import type { Prisma, ToolType } from '@prisma/client';
 import {
   AiExecutionError,
   type AiRequestPayload,
@@ -430,7 +430,7 @@ export class AiService {
           hasWorkbook: Boolean(payload.workbook),
           workbookId: payload.workbook?.workbookId ?? null,
           metadata: payload.metadata ?? null,
-        },
+        } as Prisma.InputJsonValue,
         status: 'queued',
       },
     });

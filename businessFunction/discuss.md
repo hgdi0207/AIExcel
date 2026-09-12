@@ -301,3 +301,63 @@ alt-svc: h3=":443"; ma=86400
 Pivot Builder 的目标从“返回 JSON 配置”升级为“生成原生 PivotTable xlsx 并下载”
 NestJS 负责 AI 配置、权限、计费、任务编排、下载鉴权
 Java 服务负责生成带 pivotTable / pivotCache 的原生 Excel 文件
+
+
+
+
+
+
+
+
+
+
+
+
+=====================代理提交github strat=========================================================
+所以现在真的是网络问题，不是仓库地址写错。你本机前面已经在用 7890 代理，最直接的做法是给 Git 也挂上代理，然后再推。
+在 PowerShell 执行：
+git config --global http.proxy http://127.0.0.1:7890
+git config --global https.proxy http://127.0.0.1:7890
+git push -u origin main
+如果成功了，建议再取消 Git 全局代理，避免影响别的仓库：
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+如果还是失败，再执行这两条把结果发我：
+git config --global --get http.proxy
+git ls-remote origin
+我继续帮你定位。
+=====================代理提交github end=========================================================
+
+================Windows启动Docker Desktop strat=========================================================================
+安装完成并重启 Windows 后，可以通过以下任一方式启动 Docker Desktop。
+方法一：开始菜单
+1. 按 Windows 键。
+2. 搜索 Docker Desktop。
+3. 点击打开。
+4. 等待右下角 Docker 图标显示运行状态。
+方法二：PowerShell
+Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+如果提示找不到文件，尝试：
+Start-Process "$env:ProgramFiles\Docker\Docker\Docker Desktop.exe"
+启动后等待约 1～3 分钟，再验证：
+docker version
+正常情况下会同时显示：
+Client:
+...
+Server:
+...
+如果只显示 Client，说明 Docker Desktop 尚未完全启动。可以检查：
+docker info
+看到 Docker Server 信息后，再执行镜像构建命令：
+cd E:\huanggengdi\overseaNetPage\buinessPage\AIExcel
+
+docker buildx build --platform linux/amd64 --load `
+  -f backend/Dockerfile `
+  -t aiexcel-backend:prod .
+Docker Desktop 也可以设置为开机自动启动：
+1. 打开 Docker Desktop。
+2. 进入 Settings。
+3. 打开 General。
+4. 勾选 Start Docker Desktop when you sign in to your computer。
+5. 点击 Apply & Restart。
+================Windows启动Docker Desktop end=========================================================================

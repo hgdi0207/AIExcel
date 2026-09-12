@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JobKind, JobRecord, JobRunInput, JobStatus } from './jobs.types';
 
@@ -180,7 +181,7 @@ export class JobsService {
           workbookId: this.requireString(payload, 'workbookId'),
           sheetName: this.readString(payload, 'sheetName') ?? 'Sheet1',
           prompt: title,
-          configJson: payload,
+          configJson: payload as Prisma.InputJsonValue,
           exportStatus: 'pending',
           status: 'queued',
         } as never,
@@ -195,7 +196,7 @@ export class JobsService {
           workbookId: this.requireString(payload, 'workbookId'),
           prompt: title,
           chartType: this.readString(payload, 'preferredChartType') ?? 'line',
-          configJson: payload,
+          configJson: payload as Prisma.InputJsonValue,
           status: 'queued',
         },
       });
@@ -301,7 +302,7 @@ export class JobsService {
         data: {
           status: input.status,
           chartType: this.readString(result, 'chartType') ?? undefined,
-          previewJson: result ?? undefined,
+          previewJson: result as Prisma.InputJsonValue | undefined,
           errorMessage: input.errorMessage,
           completedAt,
         },

@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   backend:
     image: aiexcel-backend:latest
@@ -13,6 +11,8 @@ services:
     environment:
       PORT: 3000
       NODE_ENV: production
+      DATABASE_URL: postgresql://${AIEXCEL_POSTGRES_USER:-aiexcel}:${AIEXCEL_POSTGRES_PASSWORD:-change-me}@postgres:5432/${AIEXCEL_POSTGRES_DB:-aiexcel}
+      REDIS_URL: redis://redis:6379
       FRONTEND_ORIGIN: http://YOUR_SERVER_IP:3211
       CORS_ORIGINS: http://YOUR_SERVER_IP:3211
       PIVOT_EXPORT_SERVICE_URL: http://pivot-export:8085
@@ -21,7 +21,14 @@ services:
     volumes:
       - ./backend/storage:/app/backend/storage
     depends_on:
-      - pivot-export
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      pivot-export:
+        condition: service_started
+    networks:
+      - aiexcel-internal
 
   frontend:
     image: aiexcel-frontend:latest
@@ -39,6 +46,8 @@ services:
       - '3211:3001'
     depends_on:
       - backend
+    networks:
+      - aiexcel-internal
 
   pivot-export:
     image: aiexcel-pivot-export:latest
@@ -53,3 +62,50 @@ services:
       JAVA_TOOL_OPTIONS: -Xms256m -Xmx1024m
     expose:
       - '8085'
+    networks:
+      - aiexcel-internal
+
+  postgres:
+    image: postgres:16
+    container_name: aiexcel-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${AIEXCEL_POSTGRES_DB:-aiexcel}
+      POSTGRES_USER: ${AIEXCEL_POSTGRES_USER:-aiexcel}
+      POSTGRES_PASSWORD: ${AIEXCEL_POSTGRES_PASSWORD:-change-me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    expose:
+      - '5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIEXCEL_POSTGRES_USER:-aiexcel} -d ${AIEXCEL_POSTGRES_DB:-aiexcel}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - aiexcel-internal
+
+  redis:
+    image: redis:7.4
+    container_name: aiexcel-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    expose:
+      - '6379'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - aiexcel-internal
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  aiexcel-internal:
+    driver: bridge

@@ -77,4 +77,27 @@ export class BillingController {
       data: await this.billingService.processStripeWebhook(rawBody, stripeSignature),
     };
   }
+
+  @Post('webhook/forwarded')
+  @Public()
+  async forwardedWebhook(
+    @Req() request: Request & { rawBody?: Buffer | string },
+    @Headers('x-webhook-app-id') applicationId?: string,
+    @Headers('x-webhook-timestamp') timestamp?: string,
+    @Headers('x-webhook-signature') signature?: string,
+  ) {
+    const rawBody = request.rawBody;
+    if (!rawBody) {
+      throw new UnauthorizedException('Missing webhook raw body');
+    }
+
+    return {
+      success: true,
+      data: await this.billingService.processForwardedStripeWebhook(rawBody, {
+        applicationId,
+        timestamp,
+        signature,
+      }),
+    };
+  }
 }

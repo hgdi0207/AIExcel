@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, SubscriptionStatus, UserPlan } from '@prisma/client';
@@ -9,6 +10,7 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UsageService } from '../usage/usage.service';
+import { verifyForwardedWebhookSignature } from './stripe-webhook-forwarding';
 
 type BillingPlanDefinition = {
   planCode: string;
@@ -133,6 +135,7 @@ export class BillingService {
     const plan = this.resolvePlan(planCode);
     const stripe = this.getStripeClient();
     const frontendOrigin = this.getFrontendOrigin();
+    const applicationId = this.getStripeApplicationId();
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -161,11 +164,13 @@ export class BillingService {
       ],
       subscription_data: {
         metadata: {
+          applicationId,
           userId: user.id,
           planCode: plan.planCode,
         },
       },
       metadata: {
+        applicationId,
         userId: user.id,
         planCode: plan.planCode,
       },
@@ -208,6 +213,56 @@ export class BillingService {
     }
 
     const event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
+    const eventApplicationId = this.extractApplicationId(event.data.object);
+    if (eventApplicationId !== this.getStripeApplicationId()) {
+      return {
+        received: true,
+        ignored: true,
+      };
+    }
+    return this.processVerifiedStripeEvent(event);
+  }
+
+  async processForwardedStripeWebhook(
+    rawBody: Buffer | string,
+    headers: {
+      applicationId?: string;
+      timestamp?: string;
+      signature?: string;
+    },
+  ) {
+    const expectedApplicationId = this.getStripeApplicationId();
+    if (
+      !headers.applicationId ||
+      !headers.timestamp ||
+      !headers.signature ||
+      headers.applicationId !== expectedApplicationId
+    ) {
+      throw new UnauthorizedException('Invalid forwarded webhook headers.');
+    }
+
+    const verified = verifyForwardedWebhookSignature({
+      rawBody,
+      applicationId: headers.applicationId,
+      timestamp: headers.timestamp,
+      signature: headers.signature,
+      secret: this.getWebhookForwardingSecret(),
+      toleranceSeconds: this.getWebhookForwardingToleranceSeconds(),
+    });
+    if (!verified) {
+      throw new UnauthorizedException('Invalid or expired forwarded webhook signature.');
+    }
+
+    const event = this.parseForwardedStripeEvent(rawBody);
+    const eventApplicationId = this.extractApplicationId(event.data.object);
+    if (eventApplicationId !== expectedApplicationId) {
+      throw new UnauthorizedException('Forwarded Stripe event belongs to another application.');
+    }
+
+    return this.processVerifiedStripeEvent(event);
+  }
+
+  private async processVerifiedStripeEvent(event: Stripe.Event) {
     const existing = await this.prismaService.billingWebhookEvent.findUnique({
       where: {
         provider_providerEventId: {
@@ -216,23 +271,41 @@ export class BillingService {
         },
       },
     });
-    if (existing) {
+    if (existing?.status === 'processed') {
       return {
         received: true,
         duplicate: true,
       };
     }
 
-    await this.prismaService.billingWebhookEvent.create({
-      data: {
-        provider: 'stripe',
-        providerEventId: event.id,
-        providerSubscriptionId: this.extractSubscriptionId(event as any),
-        eventType: event.type,
-        payloadJson: event as unknown as Prisma.InputJsonValue,
-        status: 'received',
-      },
-    });
+    if (existing) {
+      await this.prismaService.billingWebhookEvent.update({
+        where: {
+          provider_providerEventId: {
+            provider: 'stripe',
+            providerEventId: event.id,
+          },
+        },
+        data: {
+          providerSubscriptionId: this.extractSubscriptionId(event as any),
+          eventType: event.type,
+          payloadJson: event as unknown as Prisma.InputJsonValue,
+          status: 'received',
+          processedAt: null,
+        },
+      });
+    } else {
+      await this.prismaService.billingWebhookEvent.create({
+        data: {
+          provider: 'stripe',
+          providerEventId: event.id,
+          providerSubscriptionId: this.extractSubscriptionId(event as any),
+          eventType: event.type,
+          payloadJson: event as unknown as Prisma.InputJsonValue,
+          status: 'received',
+        },
+      });
+    }
 
     try {
       const processed = await this.handleStripeEvent(event);
@@ -545,6 +618,14 @@ export class BillingService {
     return null;
   }
 
+  private extractApplicationId(source: any) {
+    const applicationId =
+      source?.metadata?.applicationId ?? source?.subscription_details?.metadata?.applicationId;
+    return typeof applicationId === 'string' && applicationId.trim()
+      ? applicationId.trim()
+      : null;
+  }
+
   private extractUserId(source: any) {
     const userId = source.metadata?.userId;
     return typeof userId === 'string' && userId.trim().length > 0 ? userId.trim() : null;
@@ -628,6 +709,60 @@ export class BillingService {
       throw new InternalServerErrorException('Stripe webhook secret is not configured.');
     }
     return secret.trim();
+  }
+
+  private getStripeApplicationId() {
+    const applicationId = this.configService.get<string>('STRIPE_APPLICATION_ID') ?? 'sheetgpt';
+    if (!applicationId.trim()) {
+      throw new InternalServerErrorException('Stripe application ID is not configured.');
+    }
+    return applicationId.trim();
+  }
+
+  private getWebhookForwardingSecret() {
+    const secret = this.configService.get<string>('STRIPE_WEBHOOK_FORWARDING_SECRET') ?? '';
+    if (secret.trim().length < 32) {
+      throw new InternalServerErrorException(
+        'Stripe webhook forwarding secret must contain at least 32 characters.',
+      );
+    }
+    return secret.trim();
+  }
+
+  private getWebhookForwardingToleranceSeconds() {
+    const configured = Number(
+      this.configService.get<string>('STRIPE_WEBHOOK_FORWARDING_TOLERANCE_SECONDS') ?? '300',
+    );
+    return Number.isSafeInteger(configured) && configured >= 60 && configured <= 3600
+      ? configured
+      : 300;
+  }
+
+  private parseForwardedStripeEvent(rawBody: Buffer | string) {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(Buffer.isBuffer(rawBody) ? rawBody.toString('utf8') : rawBody);
+    } catch {
+      throw new BadRequestException('Forwarded webhook body is not valid JSON.');
+    }
+
+    if (
+      typeof payload !== 'object' ||
+      payload === null ||
+      (payload as { object?: unknown }).object !== 'event' ||
+      typeof (payload as { id?: unknown }).id !== 'string' ||
+      !(payload as { id: string }).id.trim() ||
+      typeof (payload as { type?: unknown }).type !== 'string' ||
+      !(payload as { type: string }).type.trim() ||
+      typeof (payload as { data?: unknown }).data !== 'object' ||
+      (payload as { data?: unknown }).data === null ||
+      typeof (payload as { data: { object?: unknown } }).data.object !== 'object' ||
+      (payload as { data: { object?: unknown } }).data.object === null
+    ) {
+      throw new BadRequestException('Forwarded webhook body is not a Stripe event.');
+    }
+
+    return payload as Stripe.Event;
   }
 
   private getFrontendOrigin() {

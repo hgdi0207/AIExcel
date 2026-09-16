@@ -16,10 +16,20 @@ type FetchOptions = RequestInit & {
   bodyJson?: unknown;
 };
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 async function parseJson<T>(response: Response) {
   const payload = (await response.json()) as ApiEnvelope<T>;
   if (!response.ok || !payload.success) {
-    throw new Error(payload.error?.message ?? 'Request failed');
+    throw new ApiError(payload.error?.message ?? 'Request failed', response.status);
   }
   return payload.data;
 }
@@ -32,6 +42,29 @@ async function refreshSession() {
   });
 
   return response.ok;
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+let authRedirecting = false;
+
+export function redirectToLogin() {
+  if (typeof window === 'undefined' || authRedirecting || window.location.pathname === '/login') {
+    return;
+  }
+
+  authRedirecting = true;
+  const next = `${window.location.pathname}${window.location.search}`;
+  window.location.replace(`/login?next=${encodeURIComponent(next)}`);
+}
+
+function refreshSessionOnce() {
+  if (!refreshInFlight) {
+    refreshInFlight = refreshSession().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+
+  return refreshInFlight;
 }
 
 async function fetchWithSessionRefresh(path: string, options: FetchOptions = {}) {
@@ -53,12 +86,17 @@ async function fetchWithSessionRefresh(path: string, options: FetchOptions = {})
     return response;
   }
 
-  const refreshed = await refreshSession();
+  const refreshed = await refreshSessionOnce();
   if (!refreshed) {
+    redirectToLogin();
     return response;
   }
 
-  return fetch(path, requestInit);
+  const retriedResponse = await fetch(path, requestInit);
+  if (retriedResponse.status === 401) {
+    redirectToLogin();
+  }
+  return retriedResponse;
 }
 
 export async function apiFetch<T>(path: string, options: FetchOptions = {}) {

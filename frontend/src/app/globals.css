@@ -48,7 +48,7 @@ textarea {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 264px minmax(0, 1fr);
   min-height: 100vh;
 }
 
@@ -56,17 +56,55 @@ textarea {
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 24px 18px;
+  height: 100dvh;
+  padding: 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(103, 112, 125, 0.5) transparent;
   border-right: 1px solid var(--line);
   background: rgba(249, 244, 237, 0.88);
   backdrop-filter: blur(18px);
 }
 
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 8px;
+  background: rgba(103, 112, 125, 0.5);
+  background-clip: padding-box;
+}
+
 .brand {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.brand-copy {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
   gap: 6px;
-  margin-bottom: 28px;
+  white-space: nowrap;
+}
+
+.brand-title {
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.brand-tagline {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+  letter-spacing: 0;
 }
 
 .brand-mark {
@@ -80,14 +118,21 @@ textarea {
   font-weight: 800;
 }
 
+.sidebar .brand-mark {
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 8px;
+}
+
 .nav-group {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 }
 
 .nav-link {
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 10px 12px;
+  border-radius: 8px;
   color: var(--muted);
   transition: 160ms ease;
 }
@@ -99,12 +144,31 @@ textarea {
   box-shadow: inset 0 0 0 1px rgba(30, 36, 48, 0.06);
 }
 
+.sidebar-divider {
+  height: 1px;
+  flex: 0 0 1px;
+  margin: 14px 0;
+  background: rgba(31, 45, 64, 0.08);
+}
+
 .sidebar-footer {
-  margin-top: 24px;
-  padding: 16px;
-  border-radius: 20px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 8px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(249, 241, 232, 0.94));
   border: 1px solid rgba(217, 107, 43, 0.14);
+}
+
+.sidebar-footer-title {
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.sidebar-footer-copy {
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
 }
 
 .main {
@@ -371,6 +435,8 @@ textarea {
   .sidebar {
     position: static;
     height: auto;
+    overflow-y: visible;
+    scrollbar-gutter: auto;
   }
 
   .dashboard-grid,

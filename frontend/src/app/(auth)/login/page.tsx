@@ -26,9 +26,6 @@ export default function LoginPage() {
           <Link href="/api/auth/microsoft" className="button button-secondary">
             Continue with Microsoft
           </Link>
-          <Link href="/dashboard" className="button button-ghost">
-            Enter dashboard shell
-          </Link>
         </div>
 
         <div className="empty-state" style={{ marginTop: 20 }}>

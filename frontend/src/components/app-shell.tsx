@@ -26,11 +26,9 @@ export function AppShell({ children }: PropsWithChildren) {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">AX</div>
-          <div>
-            <div style={{ fontWeight: 800 }}>AI Excel</div>
-            <div className="muted" style={{ fontSize: '0.92rem' }}>
-              spreadsheet co-pilot
-            </div>
+          <div className="brand-copy">
+            <span className="brand-title">AI Excel</span>
+            <span className="brand-tagline">spreadsheet co-pilot</span>
           </div>
         </div>
 
@@ -47,13 +45,7 @@ export function AppShell({ children }: PropsWithChildren) {
           ))}
         </nav>
 
-        <div
-          style={{
-            height: 1,
-            background: 'rgba(31, 45, 64, 0.08)',
-            margin: '18px 0',
-          }}
-        />
+        <div className="sidebar-divider" />
 
         <nav className="nav-group">
           {secondaryNav.map((item) => (
@@ -69,8 +61,8 @@ export function AppShell({ children }: PropsWithChildren) {
         </nav>
 
         <div className="sidebar-footer">
-          <div style={{ fontWeight: 700, marginBottom: 8 }}>Free plan guide rail</div>
-          <div className="muted" style={{ fontSize: '0.92rem', marginBottom: 14 }}>
+          <div className="sidebar-footer-title">Free plan guide rail</div>
+          <div className="sidebar-footer-copy">
             Ship the MVP flow first, then swap the mock login for real Google and Microsoft OAuth.
           </div>
           <Link href="/billing" className="button button-primary" style={{ display: 'inline-flex' }}>

@@ -361,3 +361,35 @@ Docker Desktop 也可以设置为开机自动启动：
 4. 勾选 Start Docker Desktop when you sign in to your computer。
 5. 点击 Apply & Restart。
 ================Windows启动Docker Desktop end=========================================================================
+
+
+网站的风格还是有点旧，可以完全照竞争对手的吗？
+
+还有，一开始不要让他登录，起码让他先能看到内容。不然他 Seo 不知道你这个网站是干嘛的，他排不了名的
+
+
+
+=============20260917==========
+1.完善Stripe付款--
+2.页面seo优化
+3.去掉微软登录--
+4.测试功能
+
+
+
+
+STRIPE_WEBHOOK_FORWARDING_ENABLED=true
+STRIPE_WEBHOOK_FORWARDING_POLL_INTERVAL_MS=10000
+STRIPE_FORWARD_SHEETGPT_URL=https://sheetgpt.io/api/billing/webhook/forwarded
+STRIPE_FORWARD_SHEETGPT_SECRET=<与 AIExcel 独立共享的至少 32 字符密钥>
+
+
+
+建 backend 容器：
+docker compose -f docker-compose.prod.yml up -d \
+  --no-deps --force-recreate backend
+然后检查状态和日志：
+docker compose -f docker-compose.prod.yml ps backend
+docker compose -f docker-compose.prod.yml logs --tail=100 backend
+验证健康接口：
+curl http://127.0.0.1:3210/api/health

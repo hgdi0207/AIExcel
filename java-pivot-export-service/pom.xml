@@ -13,7 +13,7 @@
 
   <groupId>com.aiexcel</groupId>
   <artifactId>java-pivot-export-service</artifactId>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
   <name>java-pivot-export-service</name>
   <description>Internal Java export service for AI Excel native pivot export</description>
 

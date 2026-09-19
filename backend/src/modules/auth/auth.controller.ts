@@ -45,7 +45,7 @@ export class AuthController {
     @Query('code') code?: string,
     @Query('state') state?: string,
   ) {
-    const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://127.0.0.1:3001';
+    const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://127.0.0.1:3002';
     if (!code) {
       return response.redirect(`${frontendOrigin}/login?error=missing_code`);
     }
@@ -69,7 +69,7 @@ export class AuthController {
     @Query('code') code?: string,
     @Query('state') state?: string,
   ) {
-    const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://127.0.0.1:3001';
+    const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://127.0.0.1:3002';
     if (!code) {
       return response.redirect(`${frontendOrigin}/login?error=missing_code`);
     }

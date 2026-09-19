@@ -4,34 +4,16 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { getCurrentUser, getFiles, getUsageSummary } from '@/lib/api';
 import type { AuthUser, UsageSummary, WorkbookItem } from '@/lib/types';
-import { PageHeader } from '@/components/page-header';
 
-const cards = [
-  {
-    href: '/pivot-builder',
-    title: 'Pivot Builder',
-    copy: 'Turn natural-language analysis goals into pivot layouts and exportable configs.',
-  },
-  {
-    href: '/assistant',
-    title: 'Spreadsheet Assistant',
-    copy: 'Chat with AI over uploaded workbooks, formulas, and sheet structures.',
-  },
-  {
-    href: '/data-analysis',
-    title: 'Data Analysis',
-    copy: 'Generate trend summaries, anomaly notes, and decision-ready insights.',
-  },
-  {
-    href: '/charts',
-    title: 'Charts & Graphs',
-    copy: 'Recommend the right visual and return a chart-ready configuration.',
-  },
-  {
-    href: '/reports',
-    title: 'Reports',
-    copy: 'Package analysis into reusable summaries, management notes, and exports.',
-  },
+const tools = [
+  { href: '/assistant', title: 'AI Chat', icon: 'AI', copy: 'Ask questions and work with uploaded spreadsheets.' },
+  { href: '/pivot-builder', title: 'Pivot Tables', icon: 'PT', copy: 'Create and analyze pivot tables with AI.', badge: 'New' },
+  { href: '/formulas', title: 'Formulas', icon: 'FX', copy: 'Generate and explain spreadsheet formulas.' },
+  { href: '/scripts', title: 'Scripts', icon: '</>', copy: 'Generate and explain VBA or Apps Script.' },
+  { href: '/data-analysis', title: 'Data Analysis', icon: 'DA', copy: 'Find trends, anomalies, and insights.' },
+  { href: '/charts', title: 'Charts', icon: 'CH', copy: 'Create chart recommendations from data.' },
+  { href: '/reports', title: 'Reports', icon: 'RP', copy: 'Turn spreadsheet data into reports.' },
+  { href: '/billing', title: 'Billing', icon: '$', copy: 'Manage your plan and subscription.' },
 ];
 
 export function DashboardClient() {
@@ -47,82 +29,39 @@ export function DashboardClient() {
         setUsage(summary);
         setFiles(filePayload.items);
       })
-      .catch((err: Error) => {
-        setError(err.message);
-      });
+      .catch((reason: Error) => setError(reason.message));
   }, []);
 
   return (
-    <>
-      <PageHeader
-        title={`Welcome back${user ? `, ${user.name}` : ''}`}
-        subtitle="Ship the homepage MVP first: Pivot Builder, Spreadsheet Assistant, Data Analysis, Charts & Graphs, and Reports all hang off the same workbook and quota model."
-        badge={user ? `${user.plan.toUpperCase()} plan` : 'MVP shell'}
-      />
-
-      {error ? (
-        <div className="empty-state" style={{ marginBottom: 18 }}>
-          Session not ready yet. Use the mock callback on the login page to set cookies, then come back here.
-        </div>
-      ) : null}
-
-      <div className="grid dashboard-grid">
-        {cards.map((card) => (
-          <Link key={card.href} href={card.href} className="dashboard-card">
-            <div>
-              <div className="badge" style={{ marginBottom: 12 }}>
-                Core task
-              </div>
-              <h3 style={{ margin: 0 }}>{card.title}</h3>
-              <p className="muted" style={{ marginBottom: 0 }}>
-                {card.copy}
-              </p>
-            </div>
-            <div style={{ fontWeight: 700 }}>Open workspace →</div>
+    <div className="p-5 md:p-8">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-text-primary mb-2">Dashboard</h1>
+        <p className="text-text-secondary">Overview of your app</p>
+      </div>
+      <div className="mb-6 bg-gradient-to-r from-brand-green/10 to-purple-500/10 rounded-lg p-6 border border-brand-green/20">
+        <div className="text-xl font-semibold text-text-primary">Welcome{user ? `, ${user.name}` : ''}!</div>
+        <p className="text-text-secondary mt-2">You have {usage?.credits.remaining ?? '-'} credits remaining and {files.length} workbooks ready.</p>
+      </div>
+      {error ? <div className="mb-6 p-4 border border-red-200 bg-red-50 text-error-red rounded-md">{error}</div> : null}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        {tools.map((tool) => (
+          <Link key={tool.href} href={tool.href} className="relative group bg-white border border-border-gray rounded-md p-6 hover:shadow-card hover:-translate-y-1 transition-all duration-300">
+            {tool.badge ? <span className="absolute top-3 right-3 bg-brand-green text-white text-xs px-2 py-1 rounded-full">{tool.badge}</span> : null}
+            <div className="w-10 h-10 mb-4 rounded-md bg-bg-gray flex items-center justify-center text-sm font-bold text-brand-green-dark">{tool.icon}</div>
+            <h3 className="text-lg font-semibold text-text-primary mb-2 group-hover:text-brand-green-dark transition">{tool.title}</h3>
+            <p className="text-sm text-text-secondary">{tool.copy}</p>
           </Link>
         ))}
       </div>
-
-      <div className="grid metric-grid" style={{ marginTop: 18 }}>
-        <div className="panel metric-card">
-          <div className="muted">Credits remaining</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800 }}>
-            {usage ? usage.credits.remaining : '—'}
+      <div className="mt-8 bg-white border border-border-gray rounded-md p-6">
+        <h2 className="text-lg font-semibold mb-4">Recent workbooks</h2>
+        {files.length ? files.slice(0, 5).map((file) => (
+          <div key={file.id} className="py-3 border-t border-border-gray first:border-0">
+            <strong>{file.fileName}</strong>
+            <span className="ml-3 text-sm text-text-secondary">{file.sheetCount} sheets, {file.rowCount} rows</span>
           </div>
-        </div>
-        <div className="panel metric-card">
-          <div className="muted">Workbooks ready</div>
-          <div style={{ fontSize: '2rem', fontWeight: 800 }}>{files.length}</div>
-        </div>
-        <div className="panel metric-card">
-          <div className="muted">Top metric</div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>
-            {usage?.metrics[0]?.metricType ?? 'No usage yet'}
-          </div>
-        </div>
+        )) : <p className="text-text-secondary">No workbook uploaded yet.</p>}
       </div>
-
-      <div className="grid" style={{ marginTop: 18 }}>
-        <div className="panel">
-          <h3>Recent workbooks</h3>
-          <div className="list">
-            {files.length === 0 ? (
-              <div className="empty-state">
-                No workbook uploaded yet. Start from any tool page and upload your first file.
-              </div>
-            ) : (
-              files.slice(0, 5).map((item) => (
-                <div key={item.id} className="list-item">
-                  <div style={{ fontWeight: 700 }}>{item.fileName}</div>
-                  <div className="muted" style={{ fontSize: '0.92rem' }}>
-                    {item.sheetCount} sheets · {item.rowCount} rows · {item.columnCount} columns
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }

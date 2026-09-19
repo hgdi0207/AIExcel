@@ -766,6 +766,6 @@ export class BillingService {
   }
 
   private getFrontendOrigin() {
-    return (this.configService.get<string>('FRONTEND_ORIGIN') ?? 'http://127.0.0.1:3001').replace(/\/$/, '');
+    return (this.configService.get<string>('FRONTEND_ORIGIN') ?? 'http://127.0.0.1:3002').replace(/\/$/, '');
   }
 }

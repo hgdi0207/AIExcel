@@ -22,6 +22,14 @@ frontend/out/
 java-pivot-export-service/target/
 *.tsbuildinfo
 
+# Docker release artifacts
+*.tar
+release/
+
+# Accidental duplicate scaffolds
+/src/
+/frontend/frontend/
+
 # Logs
 *.log
 npm-debug.log*

@@ -379,7 +379,7 @@ export class AuthService {
   }
 
   private getRedirectUri(provider: OAuthProviderName) {
-    const frontendOrigin = this.configService.get<string>('FRONTEND_ORIGIN') ?? 'http://127.0.0.1:3001';
+    const frontendOrigin = this.configService.get<string>('FRONTEND_ORIGIN') ?? 'http://127.0.0.1:3002';
     return `${frontendOrigin}/api/auth/${provider}/callback`;
   }
 

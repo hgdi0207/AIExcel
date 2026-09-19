@@ -13,8 +13,8 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgresql://${AIEXCEL_POSTGRES_USER:-aiexcel}:${AIEXCEL_POSTGRES_PASSWORD:-change-me}@postgres:5432/${AIEXCEL_POSTGRES_DB:-aiexcel}
       REDIS_URL: redis://redis:6379
-      FRONTEND_ORIGIN: http://YOUR_SERVER_IP:3211
-      CORS_ORIGINS: http://YOUR_SERVER_IP:3211
+      FRONTEND_ORIGIN: https://sheetgpt.io
+      CORS_ORIGINS: https://sheetgpt.io
       PIVOT_EXPORT_SERVICE_URL: http://pivot-export:8085
     ports:
       - '3210:3000'
